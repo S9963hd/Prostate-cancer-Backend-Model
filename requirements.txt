@@ -1,0 +1,7 @@
+flask
+roboflow
+supervision
+opencv-python-headless
+numpy 
+werkzeug
+flask_cors
