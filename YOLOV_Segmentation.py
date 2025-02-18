@@ -1,22 +1,10 @@
-# Cell
-# %pip install flask roboflow supervision opencv-python-headless numpy werkzeug
-
-# Cell
-# %pip install flask_cors
-
-# Cell
 from flask import Flask, request, send_file, jsonify
 from flask_cors import CORS
 from roboflow import Roboflow
 import supervision as sv
 import cv2
 import numpy as np
-import threading
-import nest_asyncio
 import os
-
-# Allow Flask and Jupyter to run together
-nest_asyncio.apply()
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -52,7 +40,6 @@ def process_image(image_path):
         print("Error during model prediction:", e)
         return None
 
-    # Convert Roboflow results to Supervision Detections format
     xyxy, confidences, class_ids = [], [], []
     class_name_to_id = {}
 
@@ -69,14 +56,12 @@ def process_image(image_path):
             class_name_to_id[class_name] = len(class_name_to_id)
         class_ids.append(class_name_to_id[class_name])
 
-    # Convert detections into the required format
     detections = sv.Detections(
         xyxy=np.array(xyxy, dtype=np.float32),
         confidence=np.array(confidences, dtype=np.float32),
         class_id=np.array(class_ids, dtype=int)
     )
 
-    # Annotate the image
     bounding_box_annotator = sv.BoxAnnotator()
     annotated_image = bounding_box_annotator.annotate(scene=image, detections=detections)
 
@@ -95,7 +80,6 @@ def process_image(image_path):
             cv2.LINE_AA,
         )
 
-    # Save the annotated image
     output_path = "./annotated_image.jpg"
     cv2.imwrite(output_path, annotated_image)
     print(f"Annotated image saved: {output_path}")
@@ -115,7 +99,6 @@ def process():
 
     print(f"Received file: {file.filename}, saved to {image_path}")
 
-    # Process the image
     output_path = process_image(image_path)
     if not output_path:
         return jsonify({"error": "Failed to process image"}), 500
@@ -123,13 +106,7 @@ def process():
     print("Sending processed image response")
     return send_file(output_path, mimetype='image/jpeg')
 
-def run_app():
-    """Function to run Flask app in a separate thread."""
-    print("Starting Flask server on http://127.0.0.1:5000")
-    app.run(debug=False, use_reloader=False, port=5000)
-
-# Start Flask in a background thread so Jupyter Notebook doesn't block
-thread = threading.Thread(target=run_app, daemon=True)
-thread.start()
-
-
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))  # Get port from Render environment
+    print(f"Starting Flask server on 0.0.0.0:{port}")
+    app.run(host="0.0.0.0", port=port, debug=False)
